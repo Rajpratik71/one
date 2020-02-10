@@ -52,9 +52,10 @@ void MonitorDriverProtocol::_monitor_vm(message_t msg)
         return;
     }
 
-    vector<VectorAttribute*> vms;
-    tmpl.get("VM", vms);
     map<int, Template> vms_templ;
+    vector<VectorAttribute*> vms;
+
+    tmpl.get("VM", vms);
 
     // Merge all attributes by ID
     for (const auto& vm : vms)
@@ -66,6 +67,7 @@ void MonitorDriverProtocol::_monitor_vm(message_t msg)
         {
             continue;
         }
+
         vm->vector_value("MONITOR", monitor_b64);
 
         auto monitor_plain = one_util::base64_decode(monitor_b64);
@@ -73,6 +75,7 @@ void MonitorDriverProtocol::_monitor_vm(message_t msg)
         if (monitor_plain != nullptr)
         {
             Template mon_tmpl;
+
             rc = mon_tmpl.parse(*monitor_plain, &error_msg);
 
             if (rc != 0)
@@ -80,12 +83,16 @@ void MonitorDriverProtocol::_monitor_vm(message_t msg)
                 NebulaLog::error("MDP", "Error parsing VM monitor attribute: "
                     + *monitor_plain + ", error: " + error_msg);
 
+                delete monitor_plain;
+
                 free(error_msg);
                 continue;
             }
+
             delete monitor_plain;
 
             auto it = vms_templ.find(id);
+
             if (it == vms_templ.end())
             {
                 vms_templ.insert(make_pair(id, std::move(mon_tmpl)));
