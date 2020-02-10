@@ -199,9 +199,11 @@ void Host::update_wilds()
     remove_template_attribute("WILDS");
     remove_template_attribute("TOTAL_WILDS");
 
-    int                 num_wilds = 0;
-    ostringstream       wild;
-    vector<Attribute*>  vm_att;
+    int num_wilds = 0;
+    ostringstream wild;
+
+    vector<Attribute*> vm_att;
+
     obj_template->remove("VM", vm_att);
 
     for (auto att : vm_att)
