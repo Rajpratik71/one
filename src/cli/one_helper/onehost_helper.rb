@@ -662,13 +662,13 @@ class OneHostHelper < OpenNebulaHelper::OneHelper
                                    .split("\n")
                 name   = wild['VM_NAME']
                 import = wild_tmplt.select do |line|
-                             line[/^IMPORT_VM_ID/]
+                             line[/IMPORT_VM_ID/]
                          end[0].split('=')[1].tr('"', ' ').strip
                 memory = wild_tmplt.select do |line|
-                             line[/^MEMORY/]
+                             line[/MEMORY/]
                          end[0].split('=')[1].tr('"', ' ').strip
                 cpu    = wild_tmplt.select do |line|
-                             line[/^CPU/]
+                             line[/CPU/]
                          end[0].split('=')[1].tr('"', ' ').strip
             else
                 name = wild['DEPLOY_ID']

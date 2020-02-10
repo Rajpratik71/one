@@ -166,9 +166,6 @@ int Host::update_info(Template &tmpl)
     remove_template_attribute("ZOMBIES");
     remove_template_attribute("TOTAL_ZOMBIES");
 
-    remove_template_attribute("WILDS");
-    remove_template_attribute("TOTAL_WILDS");
-
     remove_template_attribute("VM");
     remove_template_attribute("VM_POLL");
 
@@ -182,6 +179,8 @@ int Host::update_info(Template &tmpl)
         state = MONITORED;
     }
 
+    update_wilds();
+
     string rcpu;
     string rmem;
 
@@ -192,6 +191,76 @@ int Host::update_info(Template &tmpl)
     return 0;
 }
 
+/* ------------------------------------------------------------------------ */
+/* ------------------------------------------------------------------------ */
+
+void Host::update_wilds()
+{
+    remove_template_attribute("WILDS");
+    remove_template_attribute("TOTAL_WILDS");
+
+    int                 num_wilds = 0;
+    ostringstream       wild;
+    vector<Attribute*>  vm_att;
+    obj_template->remove("VM", vm_att);
+
+    for (auto att : vm_att)
+    {
+        auto vatt = dynamic_cast<VectorAttribute*>(att);
+
+        if (vatt == 0)
+        {
+            delete att;
+            continue;
+        }
+
+        int vmid = -1;
+        int rc = vatt->vector_value("ID", vmid);
+
+        if (rc != 0)
+        {
+            delete att;
+            continue;
+        }
+
+        if (vmid == -1) //Check if it is an imported
+        {
+            VirtualMachinePool * vmpool = Nebula::instance().get_vmpool();
+
+            vmid = vmpool->get_vmid(vatt->vector_value("DEPLOY_ID"));
+        }
+
+        if (vmid == -1)
+        {
+            if (num_wilds++ > 0)
+            {
+                wild << ", ";
+            }
+
+            string wname;
+            wname = vatt->vector_value("VM_NAME");
+
+            if (wname.empty())
+            {
+                wname = vatt->vector_value("DEPLOY_ID");
+            }
+
+            wild << wname;
+
+            obj_template->set(att);
+        }
+        else
+        {
+            delete att;
+        }
+    }
+
+    if (num_wilds > 0)
+    {
+        add_template_attribute("TOTAL_WILDS", num_wilds);
+        add_template_attribute("WILDS", wild.str());
+    }
+}
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
 

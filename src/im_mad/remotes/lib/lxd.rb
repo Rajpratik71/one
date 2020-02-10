@@ -91,6 +91,7 @@ module LXD
         # Returns VM string in template
         def wild_template_string
             string = template_string_header
+            string << "VM_NAME=#{@deploy_id}, "
 
             template = Base64.encode64(import_template).delete("\n")
 
@@ -146,7 +147,7 @@ module LXD
         private
 
         def template_string_header
-            "VM = [ ID=#{@id}, DEPLOY_ID=#{@deploy_id} "
+            "VM = [ ID=#{@id}, DEPLOY_ID=#{@deploy_id}, "
         end
 
         def parse_memory(memory)

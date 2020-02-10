@@ -369,6 +369,8 @@ private:
      */
     void reserved_capacity(std::string& rcpu, std::string& rmem) const;
 
+    void update_wilds();
+
     // *************************************************************************
     // DataBase implementation (Private)
     // *************************************************************************
