@@ -310,18 +310,18 @@ class Domain
         end
 
         features_txt = ''
-        features_txt = "FEATURES=[#{feat.join(', ')}]\n" unless feat.empty?
+        features_txt = "FEATURES=[#{feat.join(', ')}]" unless feat.empty?
 
-        tmpl =  "NAME=\"#{name}\""
-        tmpl << "CPU=#{vcpu}"
-        tmpl << "VCPU=#{vcpu}"
-        tmpl << "MEMORY=#{mem}"
-        tmpl << 'HYPERVISOR=\"kvm\"'
-        tmpl << "IMPORT_VM_ID=\"#{uuid}\""
-        tmpl << "OS=[ARCH=\"#{arch}\"]"
-        tmpl << features_txt unless features_txt.empty?
-        tmpl << spice_txt unless spice_txt.empty?
-        tmpl << vnc_txt unless vnc_txt.empty?
+        tmpl =  "NAME=\"#{name}\"\n"
+        tmpl << "CPU=#{vcpu}\n"
+        tmpl << "VCPU=#{vcpu}\n"
+        tmpl << "MEMORY=#{mem}\n"
+        tmpl << "HYPERVISOR=\"kvm\"\n"
+        tmpl << "IMPORT_VM_ID=\"#{uuid}\"\n"
+        tmpl << "OS=[ARCH=\"#{arch}\"]\n"
+        tmpl << features_txt << "\n" unless features_txt.empty?
+        tmpl << spice_txt << "\n" unless spice_txt.empty?
+        tmpl << vnc_txt << "\n" unless vnc_txt.empty?
 
         tmpl
     rescue StandardError
