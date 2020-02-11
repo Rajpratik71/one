@@ -431,6 +431,7 @@ end
 # It also gathers the state information of the domains for the state probe
 #-------------------------------------------------------------------------------
 module DomainList
+
     ############################################################################
     #  Module Interface
     ############################################################################
@@ -458,6 +459,7 @@ module DomainList
     # This is the implementation class for the module logic
     ############################################################################
     class KVMDomains
+
         include KVM
         include ProcessList
 
@@ -471,8 +473,6 @@ module DomainList
         #   @return [Hash] with KVM Domain classes indexed by their uuid
         def info
             info_each(true) do |name|
-                next unless name =~ /^one-\d+/
-
                 vm = Domain.new name
 
                 next if vm.info == -1
@@ -520,8 +520,6 @@ module DomainList
             mon_s = ''
 
             @vms.each do |_uuid, vm|
-                next if vm[:id] == -1
-
                 mon_s << "VM = [ ID=\"#{vm[:id]}\", DEPLOY_ID=\"#{vm[:name]}\","
                 mon_s << " MONITOR=\"#{vm.to_monitor}\"]\n"
             end

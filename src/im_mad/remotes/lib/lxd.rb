@@ -184,7 +184,6 @@ module DomainList
         containers.each do |container|
             domain = LXD::Domain.new(container)
 
-            next if domain.wild
             next unless container.status.casecmp('running').zero?
 
             domain.usage_memory
