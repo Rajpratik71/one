@@ -279,7 +279,15 @@ public:
     ~ClusterUpdateTemplate(){};
 
 protected:
+    void request_execute(xmlrpc_c::paramList const& _paramList,
+                         RequestAttributes& att) override;
+
     int extra_updates(PoolObjectSQL * obj) override;
+
+private:
+    string ccpu;    // Cluster reserved CPU
+    string cmem;    // Cluster reserved memory
+    std::set<int> hosts;
 };
 
 /* ------------------------------------------------------------------------- */

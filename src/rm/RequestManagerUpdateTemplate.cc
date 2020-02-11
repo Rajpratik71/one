@@ -131,17 +131,13 @@ void RequestManagerUpdateTemplate::request_execute(
 /* ------------------------------------------------------------------------- */
 /* ------------------------------------------------------------------------- */
 
-int ClusterUpdateTemplate::extra_updates(PoolObjectSQL * obj)
+void ClusterUpdateTemplate::request_execute(xmlrpc_c::paramList const& _paramList,
+                         RequestAttributes& att)
 {
-    auto cluster = static_cast<Cluster*>(obj);
+    RequestManagerUpdateTemplate::request_execute(_paramList, att);
 
-    auto hosts = cluster->get_host_ids();
+    // Update host reservations
     auto hpool = Nebula::instance().get_hpool();
-
-    string ccpu;
-    string cmem;
-
-    cluster->get_reserved_capacity(ccpu, cmem);
 
     for (auto hid : hosts)
     {
@@ -159,6 +155,18 @@ int ClusterUpdateTemplate::extra_updates(PoolObjectSQL * obj)
 
         host->unlock();
     }
+}
+
+/* ------------------------------------------------------------------------- */
+/* ------------------------------------------------------------------------- */
+
+int ClusterUpdateTemplate::extra_updates(PoolObjectSQL * obj)
+{
+    auto cluster = static_cast<Cluster*>(obj);
+
+    cluster->get_reserved_capacity(ccpu, cmem);
+
+    hosts = cluster->get_host_ids();
 
     return 0;
 }
