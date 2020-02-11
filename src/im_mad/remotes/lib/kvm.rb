@@ -195,7 +195,7 @@ end
 #-------------------------------------------------------------------------------
 class Domain
 
-    attr_reader :vm
+    attr_reader :vm, :name
 
     def initialize(name)
         @name = name
@@ -534,8 +534,9 @@ module DomainList
             @vms.each do |_uuid, vm|
                 next if vm[:id] != -1 || vm[:template].empty?
 
-                mon_s << "VM = [ ID=\"#{vm[:id]}\", DEPLOY_ID=\"#{vm[:name]}\","
-                mon_s << " IMPORT_TEMPLATE=\"#{vm[:template]}\"]\n"
+                mon_s << "VM = [ID=\"#{vm[:id]}\", DEPLOY_ID=\"#{vm[:name]}\", "
+                mon_s << "VM_NAME=\"#{vm.name}\", "
+                mon_s << "IMPORT_TEMPLATE=\"#{vm[:template]}\"]\n"
             end
 
             mon_s
