@@ -259,6 +259,10 @@ class Domain
         @vm[name]
     end
 
+    def []=(name, value)
+        @vm[name] = value
+    end
+
     # Merge hash value into the domain attributes
     def merge!(map)
         @vm.merge!(map)
@@ -489,6 +493,8 @@ module DomainList
 
                 next if vm.info == -1
 
+                t = vm.to_one
+
                 vm[:template] = Base64.strict_encode64(t) unless t.empty?
 
                 vm
@@ -528,7 +534,7 @@ module DomainList
             mon_s = ''
 
             @vms.each do |_uuid, vm|
-                next if vm[:id] != -1 || vm[:template].empty
+                next if vm[:id] != -1 || vm[:template].empty?
 
                 mon_s << "VM = [ ID=\"#{vm[:id]}\", DEPLOY_ID=\"#{vm[:name]}\","
                 mon_s << " IMPORT_TEMPLATE=\"#{vm[:template]}\"]\n"
