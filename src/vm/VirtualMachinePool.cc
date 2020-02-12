@@ -24,16 +24,6 @@
 
 #include <sstream>
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
-
-const char * VirtualMachinePool::import_table = "vm_import";
-
-const char * VirtualMachinePool::import_db_names = "deploy_id, vmid";
-
-const char * VirtualMachinePool::import_db_bootstrap =
-    "CREATE TABLE IF NOT EXISTS vm_import "
-    "(deploy_id VARCHAR(128), vmid INTEGER, PRIMARY KEY(deploy_id))";
 
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
@@ -107,7 +97,8 @@ int VirtualMachinePool::insert_index(const string& deploy_id, int vmid,
         oss << "INSERT ";
     }
 
-    oss << "INTO " << import_table << " ("<< import_db_names <<") "
+    oss << "INTO " << one_db::vm_import_table
+        << " (" << one_db::vm_import_db_names << ") "
         << " VALUES ('" << deploy_name << "'," << vmid << ")";
 
     db->free_str(deploy_name);
@@ -127,7 +118,7 @@ void VirtualMachinePool::drop_index(const string& deploy_id)
         return;
     }
 
-    oss << "DELETE FROM " << import_table << " WHERE deploy_id='"
+    oss << "DELETE FROM " << one_db::vm_import_table << " WHERE deploy_id='"
         << deploy_name << "'";
 
     db->exec_wr(oss);
@@ -402,7 +393,7 @@ int VirtualMachinePool::get_vmid(const string& deploy_id)
 
     cb.set_callback(&vmid);
 
-    oss << "SELECT vmid FROM " << import_table
+    oss << "SELECT vmid FROM " << one_db::vm_import_table
         << " WHERE deploy_id = '" << db->escape_str(deploy_id) << "'";
 
     rc = db->exec_rd(oss, &cb);

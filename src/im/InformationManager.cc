@@ -336,8 +336,20 @@ void InformationManager::_vm_state(unique_ptr<Message<OpenNebulaMessages>> msg)
         vm_tmpl->vector_value("DEPLOY_ID", deploy_id);
         vm_tmpl->vector_value("STATE", state_str);
 
+        if (id < 0)
+        {
+            // Check wild VMs
+            id = vmpool->get_vmid(deploy_id);
+
+            if (id < 0)
+            {
+                // Not imported wild, ignore VM state
+                return;
+            }
+        }
+
         NebulaLog::debug("InM", "Received VM_STATE for VM id: " +
-            to_string(id));
+            to_string(id) + ", state: " + state_str);
 
         auto* vm = vmpool->get(id);
 
@@ -352,23 +364,6 @@ void InformationManager::_vm_state(unique_ptr<Message<OpenNebulaMessages>> msg)
             vm->set_deploy_id(deploy_id);
             vmpool->update(vm);
         }
-
-        /* ---------------------------------------------------------------------- */
-        /* Update VM info only for VMs in ACTIVE                                  */
-        /* ---------------------------------------------------------------------- */
-        // ne.get_configuration_attribute("MONITORING_INTERVAL_DB_UPDATE", update_time);
-
-        // if (vm->get_state() == VirtualMachine::ACTIVE && update_time != -1 &&
-        //         (time(0) - vm->get_last_poll() > update_time))
-        // {
-        //     if (vm->update_info(monitor_str) == 0)
-        //     {
-        //         vmpool->update_history(vm);
-
-        //         //vmpool->update_monitoring(vm);
-        //     }
-
-        //     vmpool->update(vm);
 
         /* ---------------------------------------------------------------------- */
         /* Process the VM state from the monitoring info                          */

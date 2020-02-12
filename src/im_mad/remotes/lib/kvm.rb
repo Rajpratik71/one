@@ -317,7 +317,7 @@ class Domain
         tmpl << "VCPU=#{vcpu}\n"
         tmpl << "MEMORY=#{mem}\n"
         tmpl << "HYPERVISOR=\"kvm\"\n"
-        tmpl << "IMPORT_VM_ID=\"#{uuid}\"\n"
+        tmpl << "IMPORT_VM_ID=\"#{name}\"\n"
         tmpl << "OS=[ARCH=\"#{arch}\"]\n"
         tmpl << features_txt << "\n" unless features_txt.empty?
         tmpl << spice_txt << "\n" unless spice_txt.empty?

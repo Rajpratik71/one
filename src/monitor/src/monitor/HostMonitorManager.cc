@@ -252,7 +252,7 @@ void HostMonitorManager::monitor_host(int oid, bool result, const Template &tmpl
     if (monitoring.from_template(tmpl) != 0 || monitoring.oid() == -1)
     {
         string str;
-        NebulaLog::log("HMM", Log::ERROR, "Error parsing monitoring template: "
+        NebulaLog::log("HMM", Log::ERROR, "Error parsing host monitoring template: "
                 + tmpl.to_str(str));
         return;
     }
@@ -279,14 +279,27 @@ void HostMonitorManager::monitor_host(int oid, bool result, const Template &tmpl
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
 void HostMonitorManager::monitor_vm(int oid,
+                                    const string& deploy_id,
                                     const Template &tmpl)
 {
+    if (oid < 0)
+    {
+        // Wild VM, check if it is imported to OpenNebula
+        oid = vmpool->get_vmid(deploy_id);
+
+        if (oid < 0)
+        {
+            // Not imported VM, ignore monitoring
+            return;
+        }
+    }
+
     VirtualMachineMonitorInfo monitoring(oid, time(nullptr));
 
-    if (monitoring.from_template(tmpl) != 0 || monitoring.oid() == -1)
+    if (monitoring.from_template(tmpl) != 0)
     {
         string str;
-        NebulaLog::log("HMM", Log::ERROR, "Error parsing monitoring template: "
+        NebulaLog::log("HMM", Log::ERROR, "Error parsing VM monitoring template: "
                 + tmpl.to_str(str));
         return;
     }

@@ -109,6 +109,7 @@ public:
      *    @param tmpl monitoring template
      */
     void monitor_vm(int oid,
+                    const std::string &deploy_id,
                     const Template &tmpl);
 
     /**

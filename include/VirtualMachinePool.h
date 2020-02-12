@@ -236,7 +236,7 @@ public:
     static int bootstrap(SqlDB * _db)
     {
         int rc;
-        ostringstream oss_import(import_db_bootstrap);
+        ostringstream oss_import(one_db::vm_import_db_bootstrap);
 
         rc  = VirtualMachine::bootstrap(_db);
         rc += _db->exec_local_wr(oss_import);
@@ -422,16 +422,6 @@ private:
      *   - get_vmid (vmid)
      */
     int db_int_cb(void * _min_stime, int num, char **values, char **names);
-
-    // -------------------------------------------------------------------------
-    // Virtual Machine ID - Deploy ID index for imported VMs
-    // The index is managed by the VirtualMachinePool
-    // -------------------------------------------------------------------------
-    static const char * import_table;
-
-    static const char * import_db_names;
-
-    static const char * import_db_bootstrap;
 
     /**
      * Insert deploy_id - vmid index.
