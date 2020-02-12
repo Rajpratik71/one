@@ -32,10 +32,13 @@ module DomainList
             vm[:name]  = name
             vm[:state] = one_status(container)
 
-            # return if wild
-            next unless vm[:name] =~ /^one-(\d*)$/
+            m = vm[:name].match(/^one-(\d*)$/)
 
-            vm[:id] = vm[:name].split('-').last
+            if m
+                vm[:id] = m[1]
+            else
+                vm[:id] = -1
+            end
 
             vms[name] = vm
         end
