@@ -56,7 +56,7 @@ module LXD
         def usage_memory
             path = "/sys/fs/cgroup/memory/#{@lxc_path}/memory.usage_in_bytes"
             stat = File.read(path).to_i
-            @metrics[:memmory] = stat / 1024
+            @metrics[:memory] = stat / 1024
         rescue StandardError
             @metrics[:memory] = 0
         end
@@ -103,7 +103,7 @@ module LXD
             string = ''
 
             @metrics.each do |key, value|
-                string << "#{key.upcase}=\"#{value}\""
+                string << "#{key.upcase}=\"#{value}\"\n"
             end
 
             Base64.encode64(string).delete("\n")
