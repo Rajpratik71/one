@@ -1,6 +1,7 @@
 #!/usr/bin/ruby
 
 require 'rexml/document'
+require 'socket'
 require_relative '../../../lib/probe_db'
 require_relative '../../../lib/lxd'
 
@@ -31,6 +32,7 @@ module DomainList
             next if container.config['user.one_status'] == '0'
 
             vm[:name]  = name
+            vm[:uuid]  = "#{name}-#{Socket.gethostname}"
             vm[:state] = one_status(container)
 
             m = vm[:name].match(/^one-(\d*)$/)
