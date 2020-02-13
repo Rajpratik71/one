@@ -199,8 +199,6 @@ module DomainList
         string = ''
 
         domains.each do |domain|
-            next if domain.wild
-
             string << domain.template_string
         end
 
