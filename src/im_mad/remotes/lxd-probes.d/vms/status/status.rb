@@ -1,5 +1,6 @@
 #!/usr/bin/ruby
 
+require 'rexml/document'
 require_relative '../../../lib/probe_db'
 require_relative '../../../lib/lxd'
 
@@ -58,7 +59,16 @@ module DomainList
 end
 
 begin
-    vmdb = VirtualMachineDB.new('lxd', :missing_state => 'POWEROFF')
+    config = REXML::Document.new(xml_txt).root
+    period = config.elements['PROBES_PERIOD/STATE_VM'].text.to_s
+rescue StandardError
+    period = 0
+end
+
+begin
+    vmdb = VirtualMachineDB.new('lxd',
+                                :missing_state => 'POWEROFF',
+                                :period => period)
 
     vmdb.purge
 
