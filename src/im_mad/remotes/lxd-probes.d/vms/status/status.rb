@@ -60,6 +60,8 @@ module DomainList
 
 end
 
+xml_txt = STDIN.read
+
 begin
     config = REXML::Document.new(xml_txt).root
     period = config.elements['PROBES_PERIOD/STATE_VM'].text.to_s

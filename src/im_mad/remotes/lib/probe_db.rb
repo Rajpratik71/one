@@ -96,12 +96,13 @@ class VirtualMachineDB
         # report state changes in vms
         # ----------------------------------------------------------------------
         vms.each do |_uuid, vm|
-            vm_db = @dataset.first(:id => vm[:id])
+            vm_db = @dataset.first(:uuid => _uuid)
 
-            monitor_ids << vm[:id].to_i
+            monitor_ids << _uuid
 
             if vm_db.nil?
                 @dataset.insert({
+                    :uuid      => _uuid,
                     :id        => vm[:id].to_i,
                     :name      => vm[:name],
                     :timestamp => time,
@@ -114,7 +115,7 @@ class VirtualMachineDB
                 next
             end
 
-            @dataset.where(:id => vm[:id]).update(:state     => vm[:state],
+            @dataset.where(:uuid => _uuid).update(:state     => vm[:state],
                                                   :missing   => 0,
                                                   :timestamp => time)
 
@@ -126,8 +127,8 @@ class VirtualMachineDB
         # ----------------------------------------------------------------------
         # check missing VMs
         # ----------------------------------------------------------------------
-        (@dataset.map(:id) - monitor_ids).each do |id|
-            vm_db = @dataset.first(:id => id)
+        (@dataset.map(:uuid) - monitor_ids).each do |uuid|
+            vm_db = @dataset.first(:uuid => uuid)
 
             next if vm_db.nil?
 
@@ -136,10 +137,10 @@ class VirtualMachineDB
             if miss >= @conf[:times_missing] || force_update
                 status_str << vm_to_status(vm_db, @conf[:missing_state])
 
-                @dataset.where(:id => id).delete
+                @dataset.where(:uuid => uuid).delete
             else
-                @dataset.where(:id => id).update(:timestamp => time,
-                                                 :missing   => miss + 1)
+                @dataset.where(:uuid => uuid).update(:timestamp => time,
+                                                     :missing   => miss + 1)
             end
         end
 
@@ -153,7 +154,8 @@ class VirtualMachineDB
         return if @db.table_exists?(:states)
 
         @db.create_table :states do
-            Integer :id, primary_key: true
+            String  :uuid, primary_key: true
+            Integer :id
             String  :name
             Integer :timestamp
             Integer :missing
@@ -166,7 +168,7 @@ class VirtualMachineDB
 
     def vm_to_status(vm, state = vm[:state])
         "VM = [ ID=\"#{vm[:id]}\", DEPLOY_ID=\"#{vm[:name]}\", " \
-        "STATE=\"#{state}\" ]\n"
+        " UUID=\"#{vm[:uuid]}\", STATE=\"#{state}\" ]\n"
     end
 
     # Load configuration file and parse user provided options

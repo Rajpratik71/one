@@ -1208,7 +1208,8 @@ void  LifeCycleManager::monitor_poweron_action(int vid)
         return;
     }
 
-    if ( vm->get_state() == VirtualMachine::POWEROFF )
+    if ( vm->get_state() == VirtualMachine::POWEROFF ||
+         vm->get_state() == VirtualMachine::SUSPENDED )
     {
             vm->log("VMM",Log::INFO,"VM found again by the drivers");
 

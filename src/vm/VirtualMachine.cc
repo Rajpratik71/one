@@ -1011,8 +1011,14 @@ int VirtualMachine::insert(SqlDB * db, string& error_str)
         }
         else
         {
-            deploy_id = value;
             obj_template->add("IMPORTED", "YES");
+
+            user_obj_template->get("DEPLOY_ID", deploy_id);
+            user_obj_template->erase("DEPLOY_ID");
+            if (deploy_id.empty())
+            {
+                deploy_id = name;
+            }
         }
     }
 
