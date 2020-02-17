@@ -35,8 +35,9 @@ void RequestManagerCluster::action_generic(
     string cluster_name;
     string obj_name;
 
-    Cluster *       cluster = nullptr;
-    Clusterable *   cluster_obj = nullptr;
+    Cluster *     cluster     = nullptr;
+    Clusterable * cluster_obj = nullptr;
+
     PoolObjectSQL * object = nullptr;
 
     PoolObjectAuth c_perms;
@@ -192,8 +193,8 @@ void RequestManagerClusterHost::add_generic(
     string obj_name;
     string err_msg;
 
-    Cluster *   cluster = nullptr;
-    Host *      host = nullptr;
+    Cluster * cluster = nullptr;
+    Host *    host    = nullptr;
 
     PoolObjectAuth c_perms;
     PoolObjectAuth obj_perms;
@@ -241,6 +242,7 @@ void RequestManagerClusterHost::add_generic(
 
     string ccpu;
     string cmem;
+
     cluster->get_reserved_capacity(ccpu, cmem);
 
     cluster->unlock();
@@ -275,7 +277,6 @@ void RequestManagerClusterHost::add_generic(
 
     host->unlock();
 
-
     // ------------- Add object to new cluster ---------------------
     cluster = clpool->get(cluster_id);
 
@@ -292,6 +293,14 @@ void RequestManagerClusterHost::add_generic(
         {
             cluster->get_reserved_capacity(ccpu, cmem);
             cluster->unlock();
+        }
+        else
+        {
+            old_cluster_id   = ClusterPool::DEFAULT_CLUSTER_ID;
+            old_cluster_name = ClusterPool::DEFAULT_CLUSTER_NAME;
+
+            ccpu = "0";
+            cmem = "0";
         }
 
         host = hpool->get(host_id);
@@ -312,7 +321,6 @@ void RequestManagerClusterHost::add_generic(
     cluster->unlock();
 
     // ------------- Remove host from old cluster ---------------------
-
     cluster = clpool->get(old_cluster_id);
 
     if ( cluster == nullptr )

@@ -204,11 +204,11 @@ void Monitor::start()
         return;
     }
 
-    NebulaLog::info("MON", "Shutting down monitor deamon");
-
     xmlCleanupParser();
 
     one_util::SSLMutex::finalize();
+
+    NebulaLog::info("MON", "All monitor drivers finalized, exiting");
 
     NebulaLog::finalize_log_system();
 }

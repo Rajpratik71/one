@@ -36,7 +36,7 @@ module LXD
             @container = container
 
             @deploy_id = @container.name
-            @uuid  = "#{@deploy_id}-#{Socket.gethostname}"
+            @uuid      = "#{@deploy_id}-#{Socket.gethostname}"
 
             if @deploy_id =~ /^one-\d+/
                 @wild = false
