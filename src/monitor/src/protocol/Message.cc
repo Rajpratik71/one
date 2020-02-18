@@ -32,6 +32,7 @@ const EString<MonitorDriverMessages> Message<MonitorDriverMessages>::_type_str({
     {"FINALIZE", MonitorDriverMessages::FINALIZE},
     {"MONITOR_VM", MonitorDriverMessages::MONITOR_VM},
     {"MONITOR_HOST", MonitorDriverMessages::MONITOR_HOST},
+    {"BEACON_HOST", MonitorDriverMessages::BEACON_HOST},
     {"SYSTEM_HOST", MonitorDriverMessages::SYSTEM_HOST},
     {"STATE_VM", MonitorDriverMessages::STATE_VM},
     {"START_MONITOR", MonitorDriverMessages::START_MONITOR},

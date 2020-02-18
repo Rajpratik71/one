@@ -35,7 +35,7 @@ require_relative '../lib/probe_db'
 class MonitorClient
 
     # Defined in src/monitor/include/MonitorDriverMessages.h
-    MESSAGE_TYPES = %w[MONITOR_VM MONITOR_HOST SYSTEM_HOST STATE_VM
+    MESSAGE_TYPES = %w[MONITOR_VM MONITOR_HOST SYSTEM_HOST BEACON_HOST STATE_VM
                        START_MONITOR STOP_MONITOR].freeze
 
     MESSAGE_STATUS = { true =>'SUCCESS', false => 'FAILURE' }.freeze
@@ -137,8 +137,7 @@ class ProbeRunner
 
             cmd = "#{probe_path} #{ARGV.join(' ')}"
 
-            o_, e_, s_ =  Open3.popen3(cmd) do |i, o, e, t|
-
+            o_, e_, s_ = Open3.popen3(cmd) do |i, o, e, t|
                 out_reader = Thread.new { o.read }
                 err_reader = Thread.new { e.read }
 
@@ -225,6 +224,11 @@ begin
     hyperv = ARGV[0].split(' ')[0]
 
     probes = {
+        :beacon_host_udp => {
+            :period => config.elements['PROBES_PERIOD/BEACON_HOST'].text.to_s,
+            :path => 'host/beacon'
+        },
+
         :system_host_udp => {
             :period => config.elements['PROBES_PERIOD/SYSTEM_HOST'].text.to_s,
             :path => 'host/system'

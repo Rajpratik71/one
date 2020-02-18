@@ -29,12 +29,13 @@ enum class MonitorDriverMessages : unsigned short int
     INIT         = 1,
     FINALIZE     = 2,
     MONITOR_VM   = 3,
-    MONITOR_HOST = 4,
-    SYSTEM_HOST  = 5,
-    STATE_VM     = 6,
-    START_MONITOR= 7,
-    STOP_MONITOR = 8,
-    LOG          = 9,
+    BEACON_HOST  = 4,
+    MONITOR_HOST = 5,
+    SYSTEM_HOST  = 6,
+    STATE_VM     = 7,
+    START_MONITOR= 8,
+    STOP_MONITOR = 9,
+    LOG          = 10,
     ENUM_MAX
 };
 

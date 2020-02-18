@@ -116,6 +116,17 @@ void MonitorDriverProtocol::_monitor_vm(message_t msg)
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
 
+void MonitorDriverProtocol::_beacon_host(message_t msg)
+{
+    NebulaLog::ddebug("MDP", "Received beacon for host " +
+            to_string(msg->oid()) + ": " + msg->payload());
+
+    hm->update_last_monitor(msg->oid());
+}
+
+/* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
+
 void MonitorDriverProtocol::_monitor_host(message_t msg)
 {
     NebulaLog::ddebug("MDP", "Received monitoring information for host " +

@@ -30,6 +30,8 @@ public:
 
     static void _monitor_vm(message_t msg);
 
+    static void _beacon_host(message_t msg);
+
     static void _monitor_host(message_t msg);
 
     static void _system_host(message_t msg);

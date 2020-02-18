@@ -33,6 +33,9 @@ public:
         register_action(MonitorDriverMessages::MONITOR_VM,
                 &MonitorDriverProtocol::_monitor_vm);
 
+        register_action(MonitorDriverMessages::BEACON_HOST,
+                &MonitorDriverProtocol::_beacon_host);
+
         register_action(MonitorDriverMessages::MONITOR_HOST,
                 &MonitorDriverProtocol::_monitor_host);
 

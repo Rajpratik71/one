@@ -90,6 +90,12 @@ public:
     void update_host(int oid, const std::string &xml);
 
     /**
+     *  Updates the last monitoring for the host
+     *    @param oid host id
+     */
+    void update_last_monitor(int oid);
+
+    /**
      *  Remove host from the pool
      *    @param oid host id
      */

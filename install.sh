@@ -275,16 +275,19 @@ VAR_DIRS="$VAR_LOCATION/remotes \
           $VAR_LOCATION/remotes/im \
           $VAR_LOCATION/remotes/im/lib \
           $VAR_LOCATION/remotes/im/kvm.d \
+          $VAR_LOCATION/remotes/im/kvm-probes.d/host/beacon \
           $VAR_LOCATION/remotes/im/kvm-probes.d/host/monitor \
           $VAR_LOCATION/remotes/im/kvm-probes.d/host/system \
           $VAR_LOCATION/remotes/im/kvm-probes.d/vm/monitor \
           $VAR_LOCATION/remotes/im/kvm-probes.d/vm/status \
           $VAR_LOCATION/remotes/im/dummy.d \
+          $VAR_LOCATION/remotes/im/dummy-probes.d/host/beacon \
           $VAR_LOCATION/remotes/im/dummy-probes.d/host/monitor \
           $VAR_LOCATION/remotes/im/dummy-probes.d/host/system \
           $VAR_LOCATION/remotes/im/dummy-probes.d/vm/monitor \
           $VAR_LOCATION/remotes/im/dummy-probes.d/vm/status \
           $VAR_LOCATION/remotes/im/lxd.d \
+          $VAR_LOCATION/remotes/im/lxd-probes.d/host/beacon \
           $VAR_LOCATION/remotes/im/lxd-probes.d/host/monitor \
           $VAR_LOCATION/remotes/im/lxd-probes.d/host/system \
           $VAR_LOCATION/remotes/im/lxd-probes.d/vm/monitor \
@@ -466,15 +469,18 @@ INSTALL_FILES=(
     IM_PROBES_KVM_FILES:$VAR_LOCATION/remotes/im/kvm.d
     IM_PROBES_DUMMY_FILES:$VAR_LOCATION/remotes/im/dummy.d
     IM_PROBES_LXD_FILES:$VAR_LOCATION/remotes/im/lxd.d
+    IM_PROBES_KVM_HOST_BEACON_FILES:$VAR_LOCATION/remotes/im/kvm-probes.d/host/beacon
     IM_PROBES_KVM_HOST_MONITOR_FILES:$VAR_LOCATION/remotes/im/kvm-probes.d/host/monitor
     IM_PROBES_KVM_HOST_SYSTEM_FILES:$VAR_LOCATION/remotes/im/kvm-probes.d/host/system
     IM_PROBES_KVM_VM_MONITOR_FILES:$VAR_LOCATION/remotes/im/kvm-probes.d/vm/monitor
     IM_PROBES_KVM_VM_STATUS_FILES:$VAR_LOCATION/remotes/im/kvm-probes.d/vm/status
     IM_PROBES_ETC_KVM_PROBES_FILES:$VAR_LOCATION/remotes/etc/im/kvm-probes.d
+    IM_PROBES_DUMMY_HOST_BEACON_FILES:$VAR_LOCATION/remotes/im/dummy-probes.d/host/beacon
     IM_PROBES_DUMMY_HOST_MONITOR_FILES:$VAR_LOCATION/remotes/im/dummy-probes.d/host/monitor
     IM_PROBES_DUMMY_HOST_SYSTEM_FILES:$VAR_LOCATION/remotes/im/dummy-probes.d/host/system
     IM_PROBES_DUMMY_VM_MONITOR_FILES:$VAR_LOCATION/remotes/im/dummy-probes.d/vm/monitor
     IM_PROBES_DUMMY_VM_STATUS_FILES:$VAR_LOCATION/remotes/im/dummy-probes.d/vm/status
+    IM_PROBES_LXD_HOST_BEACON_FILES:$VAR_LOCATION/remotes/im/lxd-probes.d/host/beacon
     IM_PROBES_LXD_HOST_MONITOR_FILES:$VAR_LOCATION/remotes/im/lxd-probes.d/host/monitor
     IM_PROBES_LXD_HOST_SYSTEM_FILES:$VAR_LOCATION/remotes/im/lxd-probes.d/host/system
     IM_PROBES_LXD_VM_MONITOR_FILES:$VAR_LOCATION/remotes/im/lxd-probes.d/vm/monitor
@@ -1088,10 +1094,13 @@ IM_PROBES_KVM_FILES="\
     src/im_mad/remotes/kvm.d/collectd-client_control.sh \
     src/im_mad/remotes/kvm.d/collectd-client.rb"
 
+IM_PROBES_KVM_HOST_BEACON_FILES="\
+     src/im_mad/remotes/kvm-probes.d/host/beacon/collectd-client-shepherd.sh \
+     src/im_mad/remotes/kvm-probes.d/host/beacon/date.sh"
+
 IM_PROBES_KVM_HOST_MONITOR_FILES="\
      src/im_mad/remotes/kvm-probes.d/host/monitor/linux_usage.rb \
-     src/im_mad/remotes/kvm-probes.d/host/monitor/numa_usage.rb \
-     src/im_mad/remotes/common.d/collectd-client-shepherd.sh"
+     src/im_mad/remotes/kvm-probes.d/host/monitor/numa_usage.rb"
 
 IM_PROBES_KVM_HOST_SYSTEM_FILES="\
      src/im_mad/remotes/kvm-probes.d/host/system/architecture.sh \
@@ -1121,6 +1130,10 @@ IM_PROBES_DUMMY_FILES="\
     src/im_mad/remotes/dummy.d/collectd-client_control.sh \
     src/im_mad/remotes/dummy.d/collectd-client.rb"
 
+IM_PROBES_DUMMY_HOST_BEACON_FILES="\
+     src/im_mad/remotes/dummy-probes.d/host/beacon/collectd-client-shepherd_local.sh \
+     src/im_mad/remotes/dummy-probes.d/host/beacon/date.sh"
+
 IM_PROBES_DUMMY_HOST_MONITOR_FILES="\
      src/im_mad/remotes/dummy-probes.d/host/monitor/monitor.rb"
 
@@ -1138,10 +1151,13 @@ IM_PROBES_LXD_FILES="\
     src/im_mad/remotes/lxd.d/collectd-client_control.sh \
     src/im_mad/remotes/lxd.d/collectd-client.rb"
 
+IM_PROBES_LXD_HOST_BEACON_FILES="\
+     src/im_mad/remotes/lxd-probes.d/host/beacon/collectd-client-shepherd.sh \
+     src/im_mad/remotes/lxd-probes.d/host/beacon/date.sh"
+
 IM_PROBES_LXD_HOST_MONITOR_FILES="\
      src/im_mad/remotes/lxd-probes.d/host/monitor/linux_usage.rb \
-     src/im_mad/remotes/lxd-probes.d/host/monitor/numa_usage.rb \
-     src/im_mad/remotes/lxd-probes.d/collectd-client-shepherd.sh"
+     src/im_mad/remotes/lxd-probes.d/host/monitor/numa_usage.rb"
 
 IM_PROBES_LXD_HOST_SYSTEM_FILES="\
      src/im_mad/remotes/lxd-probes.d/host/system/architecture.sh \

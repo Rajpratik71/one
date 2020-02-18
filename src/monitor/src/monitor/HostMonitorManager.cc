@@ -278,6 +278,28 @@ void HostMonitorManager::monitor_host(int oid, bool result, const Template &tmpl
 
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
+
+void HostMonitorManager::update_last_monitor(int oid)
+{
+    auto host = hpool->get(oid);
+
+    if (!host.valid())
+    {
+        NebulaLog::warn("HMM", "beacon_host: unknown host " + to_string(oid));
+        return;
+    }
+
+    if (host->state() == Host::HostState::OFFLINE)
+    {
+        // Host is offline, we shouldn't receive monitoring
+        return;
+    }
+
+    host->last_monitored(time(nullptr));
+}
+
+/* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
 void HostMonitorManager::monitor_vm(int oid,
                                     const string& uuid,
                                     const Template &tmpl)
