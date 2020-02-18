@@ -348,7 +348,6 @@ void OpenNebulaTemplate::set_conf_default()
 # Daemon configuration attributes
 #-------------------------------------------------------------------------------
 #  MANAGER_TIMER
-#  MONITORING_INTERVAL_HOST
 #  MONITORING_INTERVAL_MARKET
 #  MONITORING_INTERVAL_DATASTORE
 #  MONITORING_INTERVAL_DB_UPDATE
@@ -367,7 +366,6 @@ void OpenNebulaTemplate::set_conf_default()
 #*******************************************************************************
 */
     set_conf_single("MANAGER_TIMER", "15");
-    set_conf_single("MONITORING_INTERVAL_HOST", "180");
     set_conf_single("MONITORING_INTERVAL_MARKET", "600");
     set_conf_single("MONITORING_INTERVAL_DATASTORE", "300");
     set_conf_single("MONITORING_INTERVAL_DB_UPDATE", "0");
