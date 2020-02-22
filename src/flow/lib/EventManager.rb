@@ -1,3 +1,4 @@
+# rubocop:disable Naming/FileName
 # -------------------------------------------------------------------------- #
 # Copyright 2002-2019, OpenNebula Project, OpenNebula Systems                #
 #                                                                            #
@@ -71,11 +72,17 @@ class EventManager
         @cloud_auth = @conf[:cloud_auth]
 
         # Register Action Manager actions
-        @am.register_action(ACTIONS['WAIT_DEPLOY'], method('wait_deploy_action'))
-        @am.register_action(ACTIONS['WAIT_UNDEPLOY'], method('wait_undeploy_action'))
-        @am.register_action(ACTIONS['WAIT_COOLDOWN'], method('wait_cooldown'))
-        @am.register_action(ACTIONS['WAIT_SCALEUP'], method('wait_scaleup_action'))
-        @am.register_action(ACTIONS['WAIT_SCALEDOWN'], method('wait_scaledown_action'))
+        @am.register_action(ACTIONS['WAIT_DEPLOY'],
+                            method('wait_deploy_action'))
+        @am.register_action(ACTIONS['WAIT_UNDEPLOY'],
+                            method('wait_undeploy_action'))
+        @am.register_action(ACTIONS['WAIT_COOLDOWN'],
+                            method('wait_cooldown'))
+        @am.register_action(ACTIONS['WAIT_SCALEUP'],
+                            method('wait_scaleup_action'))
+        @am.register_action(ACTIONS['WAIT_SCALEDOWN'],
+                            method('wait_scaledown_action'))
+
         Thread.new { @am.start_listener }
     end
 
@@ -88,11 +95,15 @@ class EventManager
     # @param [Service] service the service
     # @param [Role] the role which contains the VMs
     # @param [Node] nodes the list of nodes (VMs) to wait for
-    def wait_deploy_action(client, service_id, role_name, nodes)
-        Log.info LOG_COMP, "Waiting #{nodes} to be (ACTIVE, RUNNING)"
-        rc = wait(nodes, 'ACTIVE', 'RUNNING')
+    def wait_deploy_action(client, service_id, role_name, nodes, report)
+        if report
+            Log.info LOG_COMP, "Waiting #{nodes} to report ready"
+            rc = wait_report_ready(nodes)
+        else
+            Log.info LOG_COMP, "Waiting #{nodes} to be (ACTIVE, RUNNING)"
+            rc = wait(nodes, 'ACTIVE', 'RUNNING')
+        end
 
-        # Todo, check if OneGate confirmation is needed (trigger another action)
         if rc[0]
             @lcm.trigger_action(:deploy_cb,
                                 service_id,
@@ -139,12 +150,15 @@ class EventManager
     # @param [Role] the role which contains the VMs
     # @param [Node] nodes the list of nodes (VMs) to wait for
     # @param [Bool] up true if scalling up false otherwise
-    def wait_scaleup_action(client, service_id, role_name, nodes)
-        Log.info LOG_COMP, "Waiting #{nodes} to be (ACTIVE, RUNNING)"
+    def wait_scaleup_action(client, service_id, role_name, nodes, report)
+        if report
+            Log.info LOG_COMP, "Waiting #{nodes} to report ready"
+            rc = wait_report_ready(nodes)
+        else
+            Log.info LOG_COMP, "Waiting #{nodes} to be (ACTIVE, RUNNING)"
+            rc = wait(nodes, 'ACTIVE', 'RUNNING')
+        end
 
-        rc = wait(nodes, 'ACTIVE', 'RUNNING')
-
-        # Todo, check if OneGate confirmation is needed (trigger another action)
         if rc[0]
             @lcm.trigger_action(:scaleup_cb,
                                 service_id,
@@ -165,7 +179,6 @@ class EventManager
 
         rc = wait(nodes, 'DONE', 'LCM_INIT')
 
-        # Todo, check if OneGate confirmation is needed (trigger another action)
         if rc[0]
             @lcm.trigger_action(:scaledown_cb,
                                 service_id,
@@ -226,7 +239,7 @@ class EventManager
 
         until nodes.empty?
             rc = subscriber.recv_string(key)
-            rc = subscriber.recv_string(content) if rc == 0
+            rc = subscriber.recv_string(content) if rc != -1
 
             if rc == -1 && ZMQ::Util.errno != ZMQ::EAGAIN
                 Log.error LOG_COMP, 'Error reading from subscriber.'
@@ -254,6 +267,63 @@ class EventManager
             unsubscribe(id, state, lcm_state, subscriber)
             rc_nodes[:successful] << id
         end
+
+        [true, rc_nodes]
+    end
+
+    def wait_report_ready(nodes)
+        subscriber = gen_subscriber
+
+        rc_nodes = { :successful => [], :failure => [] }
+
+        return [true, rc_nodes] if nodes.empty?
+
+        subscriber.setsockopt(ZMQ::SUBSCRIBE, 'EVENT API one.vm.update 1')
+
+        key     = ''
+        content = ''
+
+        until nodes.empty?
+            rc = subscriber.recv_string(key)
+            rc = subscriber.recv_string(content) if rc != -1
+
+            # rubocop:disable Style/GuardClause
+            if rc == -1 && ZMQ::Util.errno != ZMQ::EAGAIN
+                next Log.error LOG_COMP, 'Error reading from subscriber.'
+            elsif rc == -1
+                Log.info LOG_COMP, "Timeout reached for VM #{nodes} to report"
+
+                rc = check_nodes_report(nodes)
+
+                rc_nodes[:successful].concat(rc[:successful])
+                rc_nodes[:failure].concat(rc[:failure])
+
+                next if !nodes.empty? && rc_nodes[:failure].empty?
+
+                subscriber.setsockopt(ZMQ::UNSUBSCRIBE,
+                                      'EVENT API one.vm.update 1')
+
+                # If any node is in error wait action will fails
+                return [false, rc_nodes] unless rc_nodes[:failure].empty?
+
+                return [true, rc_nodes] # (nodes.empty? && fail_nodes.empty?)
+            end
+
+            # rubocop:enable Style/GuardClause
+
+            xml   = Nokogiri::XML(Base64.decode64(content))
+            id    = xml.xpath('//PARAMETER[POSITION=2]/VALUE').first.text.to_i
+            ready = xml.xpath('//PARAMETER[POSITION=3]/VALUE').text
+
+            next if !ready.match('READY=YES') || !nodes.include?(id)
+
+            Log.info LOG_COMP, "Node #{id} reported ready"
+
+            nodes.delete(id)
+            rc_nodes[:successful] << id
+        end
+
+        subscriber.setsockopt(ZMQ::UNSUBSCRIBE, 'EVENT API one.vm.update 1')
 
         [true, rc_nodes]
     end
@@ -292,6 +362,39 @@ class EventManager
         rc_nodes
     end
 
+    def check_nodes_report(nodes)
+        rc_nodes = { :successful => [], :failure => [] }
+        client   = @cloud_auth.client
+
+        nodes.delete_if do |node|
+            vm = OpenNebula::VirtualMachine.new_with_id(node, client)
+
+            vm.info
+
+            vm_lcm_state = OpenNebula::VirtualMachine::LCM_STATE[vm.lcm_state]
+
+            if vm['VM/USER_TEMPLATE/READY'] == 'YES'
+                rc_nodes[:successful] << node
+
+                next true
+            end
+
+            # if the VM is in failure, it won't report ready
+            if FAILURE_STATES.include? vm_lcm_state
+                Log.error LOG_COMP, "Node #{node} is in FAILURE state"
+
+                rc_nodes[:failure] << node
+
+                next true
+            end
+
+            # if !READY and VM is not in failure state, keep waiting
+            false
+        end
+
+        rc_nodes
+    end
+
     ############################################################################
     #  Functionns to subscribe/unsuscribe to event changes on VM
     ############################################################################
@@ -320,3 +423,4 @@ class EventManager
     end
 
 end
+# rubocop:enable Naming/FileName

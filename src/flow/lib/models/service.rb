@@ -114,10 +114,11 @@ module OpenNebula
         # Return true if the service can be undeployed
         # @return true if the service can be undeployed, false otherwise
         def can_undeploy?
-            if transient_state?
-                state != Service::STATE['UNDEPLOYING']
+            if (transient_state? && state != Service::STATE['UNDEPLOYING']) ||
+               state == Service::STATE['DONE'] || failed_state?
+                false
             else
-               state != Service::STATE['DONE'] && !failed_state?
+                true
             end
         end
 
@@ -131,6 +132,12 @@ module OpenNebula
 
         def can_recover_scale?
             RECOVER_SCALE_STATES.include? STATE_STR[state]
+        end
+
+        # Returns the running_status_vm option
+        # @return [true, false] true if the running_status_vm option is enabled
+        def report_ready?
+            @body['ready_status_gate']
         end
 
         # Sets a new state
@@ -150,18 +157,6 @@ module OpenNebula
             log_info(msg)
 
             true
-        end
-
-        # Returns the owner username
-        # @return [String] the service's owner username
-        def owner_name
-            self['UNAME']
-        end
-
-        # Replaces this object's client with a new one
-        # @param [OpenNebula::Client] owner_client the new client
-        def replace_client(owner_client)
-            @client = owner_client
         end
 
         # Returns true if all the nodes are correctly deployed
@@ -186,60 +181,6 @@ module OpenNebula
             end
 
             true
-        end
-
-        # Returns true if any of the roles is in failed state
-        # @return [true, false] true if any of the roles is in failed state
-        def any_role_failed?
-            failed_states = [
-                Role::STATE['FAILED_DEPLOYING'],
-                Role::STATE['FAILED_UNDEPLOYING'],
-                Role::STATE['FAILED_DELETING']
-            ]
-
-            @roles.each do |_name, role|
-                if failed_states.include?(role.state)
-                    return true
-                end
-            end
-
-            false
-        end
-
-        # Returns the running_status_vm option
-        # @return [true, false] true if the running_status_vm option is enabled
-        def ready_status_gate
-            @body['ready_status_gate']
-        end
-
-        def any_role_scaling?
-            @roles.each do |_name, role|
-                if role.state == Role::STATE['SCALING']
-                    return true
-                end
-            end
-
-            false
-        end
-
-        def any_role_failed_scaling?
-            @roles.each do |_name, role|
-                if role.state == Role::STATE['FAILED_SCALING']
-                    return true
-                end
-            end
-
-            false
-        end
-
-        def any_role_cooldown?
-            @roles.each do |_name, role|
-                if role.state == Role::STATE['COOLDOWN']
-                    return true
-                end
-            end
-
-            false
         end
 
         # Create a new service based on the template provided
@@ -307,14 +248,13 @@ module OpenNebula
                 end
             else
                 OpenNebula::Error.new('Action recover: Wrong state' \
-                                             " #{state_str}")
+                                      " #{state_str}")
             end
         end
 
         # Delete the service. All the VMs are also deleted from OpenNebula.
         # @return [nil, OpenNebula::Error] nil in case of success, Error
         #   otherwise
-
         def delete
             networks = JSON.parse(self['TEMPLATE/BODY'])['networks_values']
 
@@ -334,13 +274,6 @@ module OpenNebula
             super()
         end
 
-        def delete_roles
-            @roles.each do |_name, role|
-                role.set_state(Role::STATE['DELETING'])
-                role.delete
-            end
-        end
-
         # Retrieves the information of the Service and all its Nodes.
         #
         # @return [nil, OpenNebula::Error] nil in case of success, Error
@@ -351,6 +284,24 @@ module OpenNebula
                 return rc
             end
 
+            @roles = {}
+
+            if @body['roles']
+                @body['roles'].each do |elem|
+                    elem['state'] ||= Role::STATE['PENDING']
+                    role = Role.new(elem, self)
+                    @roles[role.name] = role
+                end
+            end
+
+            nil
+        end
+
+        # Retrieves the information of the Service and all its Nodes.
+        #
+        # @return [nil, OpenNebula::Error] nil in case of success, Error
+        #   otherwise
+        def info_roles
             @roles = {}
 
             if @body['roles']
@@ -641,14 +592,18 @@ module OpenNebula
         def resolve_attributes(template)
             template['roles'].each do |role|
                 if role['vm_template_contents']
-                    # $CUSTOM1_VAR Any word character (letter, number, underscore)
+                    # $CUSTOM1_VAR Any word character
+                    # (letter, number, underscore)
                     role['vm_template_contents'].scan(/\$(\w+)/).each do |key|
                         # Check if $ var value is in custom_attrs_values
-                        if template['custom_attrs_values'].key?(key[0])
-                            role['vm_template_contents'].gsub!(
-                                '$'+key[0],
-                                template['custom_attrs_values'][key[0]])
-                            next
+                        unless template['custom_attrs_values'].nil?
+                            if template['custom_attrs_values'].key?(key[0])
+                                role['vm_template_contents'].gsub!(
+                                    '$'+key[0],
+                                    template['custom_attrs_values'][key[0]]
+                                )
+                                next
+                            end
                         end
 
                         # Check if $ var value is in networks

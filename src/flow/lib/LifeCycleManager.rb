@@ -1,3 +1,4 @@
+# rubocop:disable Naming/FileName
 # -------------------------------------------------------------------------- #
 # Copyright 2002-2019, OpenNebula Project, OpenNebula Systems                #
 #                                                                            #
@@ -16,6 +17,8 @@
 
 require 'strategy'
 require 'ActionManager'
+require 'ServiceWatchDog'
+require 'ServiceAutoScaler'
 
 # Service Life Cycle Manager
 class ServiceLCM
@@ -35,7 +38,12 @@ class ServiceLCM
         'SCALEUP_CB'           => :scaleup_cb,
         'SCALEUP_FAILURE_CB'   => :scaleup_failure_cb,
         'SCALEDOWN_CB'         => :scaledown_cb,
-        'SCALEDOWN_FAILURE_CB' => :scaledown_failure_cb
+        'SCALEDOWN_FAILURE_CB' => :scaledown_failure_cb,
+
+        # WD callbacks
+        'ERROR_WD_CB'   => :error_wd_cb,
+        'DONE_WD_CB'    => :done_wd_cb,
+        'RUNNING_WD_CB' => :running_wd_cb
     }
 
     def initialize(client, concurrency, cloud_auth)
@@ -50,6 +58,7 @@ class ServiceLCM
         }
 
         @event_manager = EventManager.new(em_conf).am
+        @wd            = ServiceWD.new(client, em_conf)
 
         # Register Action Manager actions
         @am.register_action(ACTIONS['DEPLOY_CB'],
@@ -70,10 +79,24 @@ class ServiceLCM
                             method('scaledown_failure_cb'))
         @am.register_action(ACTIONS['COOLDOWN_CB'],
                             method('cooldown_cb'))
+        @am.register_action(ACTIONS['ERROR_WD_CB'],
+                            method('error_wd_cb'))
+        @am.register_action(ACTIONS['DONE_WD_CB'],
+                            method('done_wd_cb'))
+        @am.register_action(ACTIONS['RUNNING_WD_CB'],
+                            method('running_wd_cb'))
 
         Thread.new { @am.start_listener }
 
         Thread.new { catch_up(client) }
+
+        Thread.new do
+            auto_scaler = ServiceAutoScaler.new(@srv_pool,
+                                                client,
+                                                @cloud_auth,
+                                                self)
+            auto_scaler.start
+        end
     end
 
     # Change service ownership
@@ -138,7 +161,9 @@ class ServiceLCM
     # @param number     [Integer]            How many VMs per period
     #
     # @return [OpenNebula::Error] Error if any
+    # rubocop:disable Metrics/ParameterLists
     def sched_action(client, service_id, role_name, action, period, number)
+        # rubocop:enable Metrics/ParameterLists
         rc = @srv_pool.get(service_id, client) do |service|
             role = service.roles[role_name]
 
@@ -183,6 +208,9 @@ class ServiceLCM
                 if service.all_roles_running?
                     service.set_state(Service::STATE['RUNNING'])
                     service.update
+
+                    # start watchdog
+                    @wd.start(service.id, service.roles)
                 end
 
                 # If there is no node in PENDING the service is not modified.
@@ -193,7 +221,8 @@ class ServiceLCM
                               roles,
                               'DEPLOYING',
                               'FAILED_DEPLOYING',
-                              false)
+                              false,
+                              service.report_ready?)
 
             if !OpenNebula.is_error?(rc)
                 service.set_state(Service::STATE['DEPLOYING'])
@@ -225,6 +254,9 @@ class ServiceLCM
                     "#{service.state_str}"
                 )
             end
+
+            # stop watchdog
+            @wd.stop(service.id)
 
             set_deploy_strategy(service)
 
@@ -279,6 +311,9 @@ class ServiceLCM
                 )
             end
 
+            # stop watchdog
+            @wd.stop(service.id)
+
             role = service.roles[role_name]
 
             if role.nil?
@@ -297,7 +332,8 @@ class ServiceLCM
                                   { role_name => role },
                                   'SCALING',
                                   'FAILED_SCALING',
-                                  true)
+                                  true,
+                                  service.report_ready?)
             elsif cardinality_diff < 0
                 role.scale_way('DOWN')
 
@@ -358,6 +394,39 @@ class ServiceLCM
         rc
     end
 
+    # Update role elasticity/schedule policies
+    #
+    # @param client      [OpenNebula::Client] Client executing action
+    # @param service_id  [Integer]            Service ID
+    # @param role_name   [String]             Role to update
+    # @param policies    [Hash]               New policies values
+    # @param cooldown    [Integer]            New cooldown time
+    #
+    # @return [OpenNebula::Error] Error if any
+    def update_role_policies(client, service_id, role_name, policies, cooldown)
+        rc = @srv_pool.get(service_id, client) do |service|
+            role                = service.roles[role_name]
+            elasticity_policies = policies['elasticity_policies']
+            scheduled_policies  = policies['scheduled_policies']
+
+            if elasticity_policies && !elasticity_policies.empty?
+                role.update_elasticity_policies(elasticity_policies)
+            end
+
+            if scheduled_policies && !scheduled_policies.empty?
+                role.update_scheduled_policies(scheduled_policies)
+            end
+
+            role.update_cooldown(cooldown)
+
+            service.update
+        end
+
+        Log.error LOG_COMP, rc.message if OpenNebula.is_error?(rc)
+
+        rc
+    end
+
     private
 
     ############################################################################
@@ -370,6 +439,9 @@ class ServiceLCM
 
             if service.all_roles_running?
                 service.set_state(Service::STATE['RUNNING'])
+
+                # start watching the service
+                @wd.start(service.id, service.roles)
             elsif service.strategy == 'straight'
                 set_deploy_strategy(service)
 
@@ -377,7 +449,8 @@ class ServiceLCM
                              service.roles_deploy,
                              'DEPLOYING',
                              'FAILED_DEPLOYING',
-                              false)
+                             false,
+                             service.report_ready?)
             end
 
             service.update
@@ -414,7 +487,7 @@ class ServiceLCM
 
                 if rc && !rc.empty?
                     Log.info LOG_COMP, 'Error trying to delete '\
-                                      "Virtual Networks #{rc}"
+                                       "Virtual Networks #{rc}"
                 end
 
                 service.set_state(Service::STATE['DONE'])
@@ -440,7 +513,8 @@ class ServiceLCM
             @event_manager.cancel_action(service_id)
 
             service.set_state(Service::STATE['FAILED_UNDEPLOYING'])
-            service.roles[role_name].set_state(Role::STATE['FAILED_UNDEPLOYING'])
+            service.roles[role_name]
+                   .set_state(Role::STATE['FAILED_UNDEPLOYING'])
 
             service.roles[role_name].nodes.delete_if do |node|
                 !nodes[:failure].include?(node['deploy_id']) &&
@@ -457,14 +531,16 @@ class ServiceLCM
         rc = @srv_pool.get(service_id, client) do |service|
             service.set_state(Service::STATE['COOLDOWN'])
             service.roles[role_name].set_state(Role::STATE['COOLDOWN'])
+
             @event_manager.trigger_action(:wait_cooldown,
                                           service.id,
                                           client,
                                           service.id,
                                           role_name,
-                                          10) # TODO, config time
+                                          service.roles[role_name].cooldown)
 
             service.roles[role_name].clean_scale_way
+
             service.update
         end
 
@@ -486,7 +562,7 @@ class ServiceLCM
                                           client,
                                           service.id,
                                           role_name,
-                                          10) # TODO, config time
+                                          service.roles[role_name].cooldown)
 
             service.roles[role_name].clean_scale_way
 
@@ -536,10 +612,62 @@ class ServiceLCM
             service.set_state(Service::STATE['RUNNING'])
             service.roles[role_name].set_state(Role::STATE['RUNNING'])
 
+            # start watching the service
+            @wd.start(service.id, service.roles)
+
             service.update
         end
 
         Log.error LOG_COMP, rc.message if OpenNebula.is_error?(rc)
+    end
+
+    ############################################################################
+    # WatchDog Callbacks
+    ############################################################################
+
+    def error_wd_cb(client, service_id, role_name, _node)
+        rc = @srv_pool.get(service_id, client) do |service|
+            service.set_state(Service::STATE['WARNING'])
+            service.roles[role_name].set_state(Role::STATE['WARNING'])
+
+            service.update
+        end
+
+        Log.error 'WD', rc.message if OpenNebula.is_error?(rc)
+    end
+
+    def done_wd_cb(client, service_id, role_name, node)
+        rc = @srv_pool.get(service_id, client) do |service|
+            role        = service.roles[role_name]
+            cardinality = role.cardinality - 1
+
+            # just update if the cardinality is positive
+            set_cardinality(role, cardinality, true) if cardinality >= 0
+
+            service.update
+
+            Log.info 'WD',
+                     "Update #{service_id}:#{role_name} " \
+                     "cardinality to #{cardinality}"
+
+            @wd.update(service.id, role_name, node)
+        end
+
+        Log.error 'WD', rc.message if OpenNebula.is_error?(rc)
+    end
+
+    def running_wd_cb(client, service_id, role_name, _node)
+        rc = @srv_pool.get(service_id, client) do |service|
+            service.roles[role_name].set_state(Role::STATE['RUNNING'])
+
+            if service.all_roles_running?
+                service.set_state(Service::STATE['RUNNING'])
+            end
+
+            service.update
+        end
+
+        Log.error 'WD', rc.message if OpenNebula.is_error?(rc)
     end
 
     ############################################################################
@@ -555,6 +683,13 @@ class ServiceLCM
 
         @srv_pool.each do |service|
             recover_action(client, service.id) if service.transient_state?
+
+            service.info
+
+            if Service::STATE['RUNNING'] == service.state ||
+               Service::STATE['WARNING'] == service.state
+                @wd.start(service.id, service.roles)
+            end
         end
     end
 
@@ -578,7 +713,9 @@ class ServiceLCM
     #                      if deployed successfuly
     # @param [Role::STATE] error_state new state of the role
     #                      if deployed unsuccessfuly
-    def deploy_roles(client, roles, success_state, error_state, scale)
+    # rubocop:disable Metrics/ParameterLists
+    def deploy_roles(client, roles, success_state, error_state, scale, report)
+        # rubocop:enable Metrics/ParameterLists
         if scale
             action = :wait_scaleup
         else
@@ -600,7 +737,8 @@ class ServiceLCM
                                           client,
                                           role.service.id,
                                           role.name,
-                                          rc[0])
+                                          rc[0],
+                                          report)
         end
 
         rc
@@ -623,7 +761,8 @@ class ServiceLCM
 
             role.set_state(Role::STATE[success_state])
 
-            # TODO, take only subset of nodes which needs to be undeployed (new role.nodes_undeployed_ids ?)
+            # TODO, take only subset of nodes which needs to
+            # be undeployed (new role.nodes_undeployed_ids ?)
             @event_manager.trigger_action(action,
                                           role.service.id,
                                           client,
@@ -657,7 +796,8 @@ class ServiceLCM
                                           client,
                                           service.id,
                                           name,
-                                          nodes)
+                                          nodes,
+                                          service.report_ready?)
         end
     end
 
@@ -693,8 +833,10 @@ class ServiceLCM
                                           client,
                                           service.id,
                                           name,
-                                          nodes)
+                                          nodes,
+                                          service.report_ready?)
         end
     end
 
 end
+# rubocop:enable Naming/FileName

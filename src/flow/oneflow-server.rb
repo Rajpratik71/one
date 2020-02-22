@@ -71,14 +71,14 @@ rescue StandardError => e
     exit 1
 end
 
-conf[:debug_level]      ||= 2
-conf[:lcm_interval]     ||= 30
-conf[:default_cooldown] ||= 300
-conf[:shutdown_action]  ||= 'terminate'
-conf[:action_number]    ||= 1
-conf[:action_period]    ||= 60
-conf[:vm_name_template] ||= DEFAULT_VM_NAME_TEMPLATE
-conf[:auth]             = 'opennebula'
+conf[:debug_level]         ||= 2
+conf[:autoscaler_interval] ||= 90
+conf[:default_cooldown]    ||= 300
+conf[:shutdown_action]     ||= 'terminate'
+conf[:action_number]       ||= 1
+conf[:action_period]       ||= 60
+conf[:vm_name_template]    ||= DEFAULT_VM_NAME_TEMPLATE
+conf[:auth]                = 'opennebula'
 
 set :bind, conf[:host]
 set :port, conf[:port]
@@ -315,7 +315,8 @@ end
 #     end
 #
 #     if OpenNebula.is_error?(service_rc)
-#         error CloudServer::HTTP_ERROR_CODE[service_rc.errno], service_rc.message
+#         error CloudServer::HTTP_ERROR_CODE[service_rc.errno],
+#               service_rc.message
 #     end
 #
 #     if OpenNebula.is_error?(rc)
@@ -490,6 +491,11 @@ post '/service_template/:id/action' do
                                   VALIDATION_EC)
         end
 
+        if custom_attrs && !custom_attrs_values
+            return internal_error('No custom_attrs_values found',
+                                  VALIDATION_EC)
+        end
+
         if custom_attrs &&
            custom_attrs_values &&
            !(custom_attrs.keys - custom_attrs_values.keys).empty?
@@ -510,10 +516,25 @@ post '/service_template/:id/action' do
             return internal_error('Wrong networks_values format', VALIDATION_EC)
         end
 
+        if networks && !networks_values
+            return internal_error('Missing networks_values', VALIDATION_EC)
+        end
+
         if networks && networks_values && !(networks.keys -
             networks_values.collect {|i| i.keys }.flatten).empty?
             return internal_error('Every network key must have its value ' \
                                   'defined at networks_value', VALIDATION_EC)
+        end
+
+        # remove escapes
+        if networks_values
+            networks_values.each do |net|
+                net.map do |_, value|
+                    value.map do |_, value1|
+                        value1.gsub!('\\"', '')
+                    end
+                end
+            end
         end
 
         # Creates service document

@@ -19,6 +19,18 @@ require 'one_helper'
 # Oneflow Template command helper
 class OneFlowTemplateHelper < OpenNebulaHelper::OneHelper
 
+    # Get client to make request
+    #
+    # @options [Hash] CLI options
+    def client(options)
+        Service::Client.new(
+            :username => options[:username],
+            :password => options[:password],
+            :url => options[:server],
+            :user_agent => USER_AGENT
+        )
+    end
+
     # Get service template pool
     def format_service_template_pool
         # TODO: config file
@@ -35,7 +47,7 @@ class OneFlowTemplateHelper < OpenNebulaHelper::OneHelper
                 d['GNAME']
             end
 
-            column :NAME, 'Name', :left, :size => 37 do |d|
+            column :NAME, 'Name', :left, :expand => true do |d|
                 d['NAME']
             end
 
@@ -140,6 +152,55 @@ class OneFlowTemplateHelper < OpenNebulaHelper::OneHelper
                 0
             end
         end
+    end
+
+    # Get custom attributes values from user
+    #
+    # @param custom_attrs [Hash] Custom attributes from template
+    #
+    # @return [Hash] Custom attributes values
+    def custom_attrs(custom_attrs)
+        return unless custom_attrs
+
+        puts 'There are some custom attrs which need a value'
+
+        ret = {}
+        ret['custom_attrs_values'] = {}
+
+        custom_attrs.each do |key, value|
+            split_value = value.split('|')
+
+            if split_value.size < 2
+                STDERR.puts 'Custom attribute malformed'
+                STDERR.puts 'M/O|description|<optional_value>'
+                exit(-1)
+            end
+
+            type, desc, initial = split_value
+
+            if %w[M O].include?(type)
+                puts "Introduce (#{type}) value for `#{key}` (#{desc}):"
+            else
+                STDERR.puts "Incorrect type: #{type}"
+                STDERR.puts 'only M (mandatory) O (optional) supported'
+                exit(-1)
+            end
+
+            answer = STDIN.readline.chop
+
+            if answer.empty? && type == 'M'
+                while answer.empty?
+                    STDERR.puts 'Mandatory value can\'t be empty'
+                    answer = STDIN.readline.chop
+                end
+            elsif answer.empty?
+                answer = initial
+            end
+
+            ret['custom_attrs_values'][key] = answer
+        end
+
+        ret
     end
 
 end

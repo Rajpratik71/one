@@ -270,6 +270,7 @@ VAR_DIRS="$VAR_LOCATION/remotes \
           $VAR_LOCATION/remotes/etc/market/http \
           $VAR_LOCATION/remotes/etc/vmm/kvm \
           $VAR_LOCATION/remotes/etc/vmm/lxd \
+          $VAR_LOCATION/remotes/etc/vmm/firecracker \
           $VAR_LOCATION/remotes/etc/vmm/vcenter \
           $VAR_LOCATION/remotes/etc/vnm \
           $VAR_LOCATION/remotes/im \
@@ -295,6 +296,7 @@ VAR_DIRS="$VAR_LOCATION/remotes \
           $VAR_LOCATION/remotes/vmm/one \
           $VAR_LOCATION/remotes/vmm/lxd \
           $VAR_LOCATION/remotes/vmm/packet \
+          $VAR_LOCATION/remotes/vmm/firecracker \
           $VAR_LOCATION/remotes/vnm \
           $VAR_LOCATION/remotes/vnm/802.1Q \
           $VAR_LOCATION/remotes/vnm/802.1Q/pre.d \
@@ -479,8 +481,11 @@ INSTALL_FILES=(
     VMM_EXEC_KVM_SCRIPTS:$VAR_LOCATION/remotes/vmm/kvm
     VMM_EXEC_LXD_SCRIPTS:$VAR_LOCATION/remotes/vmm/lxd
     VMM_EXEC_LXD_LIB:$VAR_LOCATION/remotes/vmm/lxd
+    VMM_EXEC_FIRECRACKER_SCRIPTS:$VAR_LOCATION/remotes/vmm/firecracker
+    VMM_EXEC_FIRECRACKER_LIB:$VAR_LOCATION/remotes/vmm/firecracker
     VMM_EXEC_ETC_KVM_SCRIPTS:$VAR_LOCATION/remotes/etc/vmm/kvm
     VMM_EXEC_ETC_LXD_SCRIPTS:$VAR_LOCATION/remotes/etc/vmm/lxd
+    VMM_EXEC_ETC_FIRECRACKER_SCRIPTS:$VAR_LOCATION/remotes/etc/vmm/firecracker
     VMM_EXEC_VCENTER_SCRIPTS:$VAR_LOCATION/remotes/vmm/vcenter
     VMM_EXEC_ETC_VCENTER_SCRIPTS:$VAR_LOCATION/remotes/etc/vmm/vcenter
     VMM_EXEC_EC2_SCRIPTS:$VAR_LOCATION/remotes/vmm/ec2
@@ -521,6 +526,8 @@ INSTALL_FILES=(
     NETWORK_VXLAN_FILES:$VAR_LOCATION/remotes/vnm/vxlan
     NETWORK_DUMMY_FILES:$VAR_LOCATION/remotes/vnm/dummy
     NETWORK_BRIDGE_FILES:$VAR_LOCATION/remotes/vnm/bridge
+    NETWORK_BRIDGE_PRE_FILES:$VAR_LOCATION/remotes/vnm/bridge/pre.d
+    NETWORK_BRIDGE_CLEAN_FILES:$VAR_LOCATION/remotes/vnm/bridge/clean.d
     NETWORK_EBTABLES_FILES:$VAR_LOCATION/remotes/vnm/ebtables
     NETWORK_FW_FILES:$VAR_LOCATION/remotes/vnm/fw
     NETWORK_OVSWITCH_FILES:$VAR_LOCATION/remotes/vnm/ovswitch
@@ -829,7 +836,8 @@ PM_EXEC_PACKET_SCRIPTS="src/pm_mad/remotes/packet/cancel \
 # $REMOTES_LOCATION/vmm/lib
 #-------------------------------------------------------------------------------
 
-VMM_EXEC_LIB_FILES="src/vmm_mad/remotes/lib/poll_common.rb"
+VMM_EXEC_LIB_FILES="src/vmm_mad/remotes/lib/poll_common.rb \
+                    src/vmm_mad/remotes/lib/command.rb"
 
 #-------------------------------------------------------------------------------
 # VMM Lib vcenter files, used by the vCenter Driver to be installed in
@@ -907,10 +915,27 @@ VMM_EXEC_LXD_LIB="src/vmm_mad/remotes/lib/lxd/opennebula_vm.rb \
                 src/vmm_mad/remotes/lib/lxd/container.rb"
 
 #-------------------------------------------------------------------------------
+# VMM SH Driver Firecracker scripts, to be installed under $REMOTES_LOCATION/vmm/firecracker
+#-------------------------------------------------------------------------------
+VMM_EXEC_FIRECRACKER_SCRIPTS="src/vmm_mad/remotes/firecracker/deploy \
+                            src/vmm_mad/remotes/firecracker/shutdown \
+                            src/vmm_mad/remotes/firecracker/cancel"
+
+VMM_EXEC_FIRECRACKER_LIB="src/vmm_mad/remotes/lib/firecracker/opennebula_vm.rb \
+                src/vmm_mad/remotes/lib/firecracker/client.rb \
+                src/vmm_mad/remotes/lib/firecracker/microvm.rb \
+                src/vmm_mad/remotes/lib/firecracker/command.rb"
+#-------------------------------------------------------------------------------
 # VMM configuration LXD scripts, to be installed under $REMOTES_LOCATION/etc/vmm/lxd
 #-------------------------------------------------------------------------------
 
 VMM_EXEC_ETC_LXD_SCRIPTS="src/vmm_mad/remotes/lxd/lxdrc"
+
+#-------------------------------------------------------------------------------
+# VMM configuration Firecracker scripts, to be installed under $REMOTES_LOCATION/etc/vmm/firecracker
+#-------------------------------------------------------------------------------
+
+VMM_EXEC_ETC_FIRECRACKER_SCRIPTS="src/vmm_mad/remotes/firecracker/firecrackerrc"
 
 #-------------------------------------------------------------------------------
 # VMM SH Driver KVM scripts, to be installed under $REMOTES_LOCATION/vmm/kvm
@@ -1169,6 +1194,10 @@ NETWORK_BRIDGE_FILES="src/vnm_mad/remotes/bridge/clean \
                     src/vnm_mad/remotes/bridge/update_sg \
                     src/vnm_mad/remotes/bridge/pre"
 
+NETWORK_BRIDGE_PRE_FILES="src/vnm_mad/remotes/bridge/pre.d/firecracker"
+
+NETWORK_BRIDGE_CLEAN_FILES="src/vnm_mad/remotes/bridge/clean.d/firecracker"
+
 NETWORK_EBTABLES_FILES="src/vnm_mad/remotes/ebtables/clean \
                     src/vnm_mad/remotes/ebtables/post \
                     src/vnm_mad/remotes/ebtables/pre \
@@ -1243,6 +1272,7 @@ TM_FILES="src/tm_mad/tm_common.sh"
 TM_SHARED_FILES="src/tm_mad/shared/clone \
                  src/tm_mad/shared/delete \
                  src/tm_mad/shared/ln \
+                 src/tm_mad/shared/ln.ssh \
                  src/tm_mad/shared/mkswap \
                  src/tm_mad/shared/mkimage \
                  src/tm_mad/shared/mv \
@@ -1251,6 +1281,7 @@ TM_SHARED_FILES="src/tm_mad/shared/clone \
                  src/tm_mad/shared/postmigrate \
                  src/tm_mad/shared/failmigrate \
                  src/tm_mad/shared/mvds \
+                 src/tm_mad/shared/mvds.ssh \
                  src/tm_mad/shared/snap_create \
                  src/tm_mad/shared/snap_create_live \
                  src/tm_mad/shared/snap_delete \
@@ -1608,7 +1639,8 @@ ONEDB_LOCAL_MIGRATOR_FILES="src/onedb/local/4.5.80_to_4.7.80.rb \
                             src/onedb/local/5.5.80_to_5.6.0.rb \
                             src/onedb/local/5.6.0_to_5.7.80.rb \
                             src/onedb/local/5.7.80_to_5.8.0.rb \
-                            src/onedb/local/5.8.0_to_5.10.0.rb"
+                            src/onedb/local/5.8.0_to_5.10.0.rb \
+                            src/onedb/local/5.10.0_to_5.12.0.rb"
 
 ONEDB_PATCH_FILES="src/onedb/patches/4.14_monitoring.rb \
                    src/onedb/patches/history_times.rb"
@@ -2249,6 +2281,8 @@ ONEFLOW_ETC_FILES="src/flow/etc/oneflow-server.conf"
 ONEFLOW_LIB_FILES="src/flow/lib/grammar.rb \
                     src/flow/lib/grammar.treetop \
                     src/flow/lib/LifeCycleManager.rb \
+                    src/flow/lib/ServiceWatchDog.rb \
+                    src/flow/lib/ServiceAutoScaler.rb \
                     src/flow/lib/log.rb \
                     src/flow/lib/models.rb \
                     src/flow/lib/strategy.rb \
